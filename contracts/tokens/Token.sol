@@ -1,6 +1,7 @@
 pragma solidity ^0.4.24;
 
 import "../math/SafeMath.sol";
+import "../ownership/Ownable.sol";
 import "./ERC20.sol";
 
 /**
@@ -8,7 +9,8 @@ import "./ERC20.sol";
  * @dev Standard ERC20 token. This contract follows the implementation at https://goo.gl/mLbAPJ.
  */
 contract Token is
-  ERC20
+  ERC20,
+  Ownable
 {
   using SafeMath for uint256;
 
@@ -31,6 +33,11 @@ contract Token is
    * Total supply of tokens.
    */
   uint256 internal tokenTotalSupply;
+
+  /**
+   * allow kill the contract itself
+   */
+  bool internal isBurn;
 
   /**
    * Balance information map.
@@ -299,6 +306,37 @@ contract Token is
 
     emit Transfer(_from, _to, _value);
     _success = true;
+  }
+
+  /**
+   * @dev kill contract itself
+   */
+  function kill
+  (
+
+  )
+    external
+    onlyOwner
+  {
+    require(isBurn == true, "contract can't be kill by ifself");
+    selfdestruct(owner);
+  }
+
+  /**
+   * @dev add issue to someone
+   * @param   _target  the target address to issue
+   * @param   _amount  the issue amount
+   */
+  function addIssue(
+    address _target,
+    uint256 _amount
+  )
+    external
+    onlyOwner
+  {
+    require(_amount > 0, "issue amount should more than 0");
+    tokenTotalSupply = tokenTotalSupply.add(_amount);
+    balances[_target] = balances[_target].add(_amount);
   }
 
 }

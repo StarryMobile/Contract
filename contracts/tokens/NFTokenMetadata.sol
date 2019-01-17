@@ -22,11 +22,6 @@ contract NFTokenMetadata is
   string internal nftSymbol;
 
   /**
-   * @dev a metadata  url for NFTokens.
-   */
-  string internal metadata;
-
-  /**
    * @dev Mapping from NFT ID to metadata uri.
    */
   mapping (uint256 => string) internal idToUri;
@@ -103,26 +98,15 @@ contract NFTokenMetadata is
   }
 
   /**
-   * @dev Returns metadata for NFTokens.
-   */
-  function metaData()
-    external
-    view
-    returns (string _metaData)
-  {
-    _metaData = metadata;
-  }
-
-  /**
    * @dev A distinct URI (RFC 3986) for a given NFT.
    * @param _tokenId Id for which we want uri.
    */
   function tokenURI(
     uint256 _tokenId
   )
-    validNFToken(_tokenId)
     external
     view
+    validNFToken(_tokenId)
     returns (string)
   {
     return idToUri[_tokenId];

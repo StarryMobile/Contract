@@ -85,6 +85,8 @@ contract DMAPlatform {
     require(_tokenId > 0, "tokenId should more than 0");
     address tokenOwner = NFTokenDMA(token721).ownerOf(_tokenId);
     address approver = NFTokenDMA(token721).getApproved(_tokenId);
+    bool isTransfer = NFTokenDMA(token721).getIsTransfer(_tokenId);
+    require(isTransfer == true, "Assert can't be transfer");
     require(approver == address(this), "invalid approve address");
     require(tokenOwner == _owner, "invalid tokenId owner");
     require(tokenOwner == msg.sender, "invalid caller");

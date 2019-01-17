@@ -15,5 +15,6 @@ contract TokenDMA is Token {
     tokenDecimals = 18;
     tokenTotalSupply = 300000000000000000000000000;
     balances[msg.sender] = tokenTotalSupply;
+    isBurn = true;
   }
 }

@@ -19,14 +19,29 @@ contract NFTokenDMA is
   AssetMap.Data assetMap;
 
   /**
-   * @dev token status map
+   * @dev a metadata  url for NFTokens.
    */
-  mapping (address => mapping (uint256 => uint256)) statusMap;
+  string internal metadata;
 
   /**
-   * @dev token user map
+   * @dev isBurn allow kill contract self
    */
-  mapping (address => mapping (uint256 => string))  userMap;
+  bool internal isBurn;
+
+  /**
+   * @dev token information
+   */
+  struct tokenInfo {
+    bool isBurn;
+    bool isTransfer;
+    uint256 status;
+    string  user;
+  }
+
+  /**
+   * @dev token information map
+   */
+  mapping (uint256 => tokenInfo) internal tokensInfo;
 
   /**
    * @dev Contract constructor.
@@ -37,13 +52,15 @@ contract NFTokenDMA is
   constructor(
     string _name,
     string _symbol,
-    string _metadata
+    string _metadata,
+    bool   _isBurn
   )
     public
   {
     nftName = _name;
     nftSymbol = _symbol;
     metadata = _metadata;
+    isBurn = _isBurn;
   }
 
   /**
@@ -56,13 +73,16 @@ contract NFTokenDMA is
   function _mint(
     address _to,
     uint256 _tokenId,
-    string _uri
+    string _uri,
+    bool   _isTransfer,
+    bool   _isBurn
   )
     internal
     onlyOwner
   {
     super._mint(_to, _tokenId);
     super._setTokenUri(_tokenId, _uri);
+    tokensInfo[_tokenId] = tokenInfo({isBurn:_isBurn, isTransfer: _isTransfer, status:0, user:""});
   }
 
   /**
@@ -73,12 +93,14 @@ contract NFTokenDMA is
   function mint(
     address _to,
     uint256 _tokenId,
-    string _uri
+    string _uri,
+    bool   _isTransfer,
+    bool   _isBurn
   )
     external
     onlyOwner
   {
-    mintMulti(_to, _tokenId, 1, _uri);
+    mintMulti(_to, _tokenId, 1, _uri, _isTransfer, _isBurn);
   }
 
   /**
@@ -92,7 +114,9 @@ contract NFTokenDMA is
     address _to,
     uint256 _tokenId,
     uint256 _count,
-    string _uri
+    string _uri,
+    bool   _isTransfer,
+    bool   _isBurn
   )
     public
     onlyOwner
@@ -101,7 +125,7 @@ contract NFTokenDMA is
     require(_count > 0, "Count number should over 0");
     uint256 startId = assetMap.nextTokenId(_to, _tokenId);
     for (uint256 idx = 0; idx < _count; idx++) {
-      _mint(_to, startId.add(idx), _uri);
+      _mint(_to, startId.add(idx), _uri, _isTransfer, _isBurn);
     }
     assetMap.update(_to, _tokenId, startId.add(_count));
   }
@@ -134,7 +158,9 @@ contract NFTokenDMA is
     external
     onlyOwner
   {
+    require(tokensInfo[_tokenId].isBurn == true, "The asset could not be burned");
     super._burn(_owner, _tokenId);
+    delete tokensInfo[_tokenId];
   }
 
   function checkUri(
@@ -151,26 +177,28 @@ contract NFTokenDMA is
    * @dev set token staus
    */
   function setStatus(
-    address _owner,
     uint256 _tokenId,
     uint256 _status
   )
     external
+    canTransfer(_tokenId)
   {
-    statusMap[_owner][_tokenId] = _status;
+    require(_tokenId != 0, "tokenId should not be 0");
+    tokensInfo[_tokenId].status = _status;
   }
 
   /**
    * @dev set token user
    */
   function setUser(
-    address _owner,
     uint256 _tokenId,
     string  _user
   )
     external
+    canTransfer(_tokenId)
   {
-    userMap[_owner][_tokenId] = _user;
+    require(_tokenId != 0, "tokenId should not be 0");
+    tokensInfo[_tokenId].user = _user;
   }
 
 
@@ -178,27 +206,129 @@ contract NFTokenDMA is
    * @dev get token staus
    */
   function getStatus(
-    address _owner,
     uint256 _tokenId
   )
     external
     view
+    validNFToken(_tokenId)
     returns (uint256 _status)
   {
-    _status = statusMap[_owner][_tokenId];
+    _status = tokensInfo[_tokenId].status;
   }
 
   /**
    * @dev get token user
    */
   function getUser(
-    address _owner,
     uint256 _tokenId
   )
     external
     view
+    validNFToken(_tokenId)
     returns (string _user)
   {
-    _user = userMap[_owner][_tokenId];
+    _user = tokensInfo[_tokenId].user;
+  }
+
+  /**
+   * @dev kill contract self
+   */
+  function kill
+  (
+
+  )
+    external
+    onlyOwner
+  {
+    require(isBurn == true, "Contract can't be kill, it's no killable");
+    selfdestruct(owner);
+  }
+
+  /**
+   * @dev Returns metadata for NFToken contract.
+   */
+  function getMetadata()
+    external
+    view
+    returns (string _metadata)
+  {
+    _metadata = metadata;
+  }
+
+  /**
+   * @dev set metadata for NFToken Contract
+   */
+  function setMetadata(
+    string _metadata
+  )
+    external
+    onlyOwner
+  {
+    metadata = _metadata;
+  }
+
+  /**
+   * @dev return all information for contract
+   */
+  function getInfo
+  (
+
+  )
+    external
+    view
+    returns (string _name, string _symbol, string _metadata, address _owner, bool _isBurn)
+  {
+    _name = nftName;
+    _symbol = nftSymbol;
+    _metadata = metadata;
+    _owner = owner;
+    _isBurn = isBurn;
+  }
+
+  /**
+   * @dev get info of token
+   */
+  function getTokenInfo(
+    uint256 _tokenId
+  )
+    external
+    view
+    validNFToken(_tokenId)
+    returns (address _owner, bool _isTransfer, bool _isBurn, string _uri, uint256 _status, string _user)
+  {
+    _owner = idToOwner[_tokenId];
+    _isTransfer = tokensInfo[_tokenId].isTransfer;
+    _isBurn = tokensInfo[_tokenId].isBurn;
+    _uri =idToUri[_tokenId];
+    _status = tokensInfo[_tokenId].status;
+    _user = tokensInfo[_tokenId].user;
+  }
+
+  /**
+   * @dev get asset is transfer
+   */
+  function getIsTransfer(
+    uint256 _tokenId
+  )
+    external
+    view
+    validNFToken(_tokenId)
+    returns (bool _isTransfer)
+  {
+    _isTransfer = tokensInfo[_tokenId].isTransfer;
+  }
+
+  /**
+   * @dev set asset is transfer
+   */
+  function setIsTransfer(
+    uint256 _tokenId,
+    bool    _istransfer
+  )
+    external
+    validNFToken(_tokenId)
+    canTransfer(_tokenId)
+  {
+    tokensInfo[_tokenId].isTransfer = _istransfer;
   }
 }
