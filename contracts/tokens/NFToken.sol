@@ -2,7 +2,7 @@ pragma solidity ^0.4.24;
 
 import "./ERC721.sol";
 import "./ERC721TokenReceiver.sol";
-import "../math/SafeMath.sol";
+import "./math/SafeMath.sol";
 import "../utils/SupportsInterface.sol";
 import "../utils/AddressUtils.sol";
 import "../mocks/AssetMap.sol";
@@ -295,10 +295,10 @@ contract NFToken is
     external
   {
     require(_count > 0, "count should more than 0");
-    uint256 startId = approvedMap.nextTokenId(_approved, _tokenId);
+    uint256 startId = approvedMap.nextTokenId(_tokenId);
     uint256[] memory r = startId.convert(_count);
     approveWithAarry(_approved, r);
-    approvedMap.update(_approved, _tokenId, startId.add(_count));
+    approvedMap.update(_tokenId, startId.add(_count));
   }
 
   /**

@@ -129,10 +129,10 @@ contract DMAPlatform {
     public
   {
     require(_count > 0, "count should more than 0");
-    uint256 startId = approveMap.nextTokenId(_owner, _tokenId);
+    uint256 startId = approveMap.nextTokenId(_tokenId);
     uint256[] memory r = startId.convert(_count);
     saveApproveWithArray(_owner, r, _value);
-    approveMap.update(_owner, _tokenId, startId.add(_count));
+    approveMap.update(_tokenId, startId.add(_count));
   }
 
   /**
@@ -153,32 +153,29 @@ contract DMAPlatform {
 
  /**
    * @dev 获取某类上线资产的最后一个编号
-   * @param    _to        资产所有者
    * @param    _tokenId   首个资产编号(作为资产标识)
    */
   function getLatestTokenId(
-    address _to,
     uint256 _tokenId
   )
     external
     view
     returns (uint256 _tid)
   {
-    _tid = approveMap.getLatestTokenId(_to, _tokenId);
+    _tid = approveMap.getLatestTokenId(_tokenId);
   }
 
   /**
    * @dev 获得某类资产下次开始交易的编号
    */
   function getLatestSalesTokenId(
-    address _to,
     uint256 _tokenId
   )
     external
     view
     returns (uint256 _tid)
   {
-    _tid = salesMap.getLatestTokenId(_to, _tokenId);
+    _tid = salesMap.getLatestTokenId(_tokenId);
   }
 
   /**
@@ -223,18 +220,17 @@ contract DMAPlatform {
    * @param _count      资产数量(至少1个)
    */
   function  revokeApprove(
-    address _owner,
     uint256 _tokenId,
     uint256 _count
   )
     external
   {
     require(_count > 0, "count should more than 0");
-    uint256 lastId = approveMap.nextTokenId(_owner, _tokenId);
+    uint256 lastId = approveMap.nextTokenId(_tokenId);
     require(lastId > 0 && lastId.sub(_tokenId) >= _count, "tokenId and count are invalid");
     uint256[] memory r = lastId.sub(_count).convert(_count);
     revokeApprovesWithArray(r);
-    approveMap.update(_owner, _tokenId, lastId.sub(_count));
+    approveMap.update(_tokenId, lastId.sub(_count));
   }
 
   function checkTotalValueWithArray(
@@ -338,10 +334,10 @@ contract DMAPlatform {
     external
   {
     require(_count > 0, "count should more than 0");
-    uint256 startId = salesMap.nextTokenId(_owner, _tokenId);
+    uint256 startId = salesMap.nextTokenId(_tokenId);
     uint256[] memory r = startId.convert(_count);
     transferWithArray(_owner, r, _value);
-    salesMap.update(_owner, _tokenId, startId.add(_count));
+    salesMap.update(_tokenId, startId.add(_count));
   }
 
   /**

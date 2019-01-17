@@ -78,7 +78,6 @@ contract NFTokenDMA is
     bool   _isBurn
   )
     internal
-    onlyOwner
   {
     super._mint(_to, _tokenId);
     super._setTokenUri(_tokenId, _uri);
@@ -98,7 +97,6 @@ contract NFTokenDMA is
     bool   _isBurn
   )
     external
-    onlyOwner
   {
     mintMulti(_to, _tokenId, 1, _uri, _isTransfer, _isBurn);
   }
@@ -119,31 +117,28 @@ contract NFTokenDMA is
     bool   _isBurn
   )
     public
-    onlyOwner
   {
     require(_tokenId > 0, "tokenId should over 0");
     require(_count > 0, "Count number should over 0");
-    uint256 startId = assetMap.nextTokenId(_to, _tokenId);
+    uint256 startId = assetMap.nextTokenId(_tokenId);
     for (uint256 idx = 0; idx < _count; idx++) {
       _mint(_to, startId.add(idx), _uri, _isTransfer, _isBurn);
     }
-    assetMap.update(_to, _tokenId, startId.add(_count));
+    assetMap.update(_tokenId, startId.add(_count));
   }
 
   /**
    * @dev 获取资产的最后一个编号
-   * @param    _to        资产所有者
    * @param    _tokenId   首个资产编号(作为资产标识)
    */
   function getLatestTokenId(
-    address _to,
     uint256 _tokenId
   )
     external
     view
     returns (uint256 _tid)
   {
-    _tid = assetMap.getLatestTokenId(_to, _tokenId);
+    _tid = assetMap.getLatestTokenId(_tokenId);
   }
 
   /**
