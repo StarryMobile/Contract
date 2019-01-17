@@ -2,10 +2,11 @@ pragma solidity ^0.4.24;
 
 import "./ERC721.sol";
 import "./ERC721TokenReceiver.sol";
-import "./math/SafeMath.sol";
-import "./utils/SupportsInterface.sol";
-import "./utils/AddressUtils.sol";
-
+import "../math/SafeMath.sol";
+import "../utils/SupportsInterface.sol";
+import "../utils/AddressUtils.sol";
+import "../mocks/AssetMap.sol";
+import "../mocks/TokenUtil.sol";
 /**
  * @dev Implementation of ERC-721 non-fungible token standard.
  */
@@ -15,6 +16,11 @@ contract NFToken is
 {
   using SafeMath for uint256;
   using AddressUtils for address;
+  using AssetMap for AssetMap.Data;
+  using TokenUtil for uint256;
+
+  // mock Map
+  AssetMap.Data mockMap;
 
   /**
    * @dev A mapping from NFT ID to the address that owns it.
@@ -253,7 +259,26 @@ contract NFToken is
   }
 
   /**
+   * @dev 对数组中的资产授权
+   * @param   _approved    被授权者
+   * @param   _tokenArr    授权资产数组
+   */
+  function approveWithAarry(
+    address     _approved,
+    uint256[]   _tokenArr
+  )
+    public
+  {
+    for (uint256 idx = 0; idx < _tokenArr.length; idx++) {
+      approve(_approved, _tokenArr[idx]);
+    }
+  }
+
+  /**
    * @dev 对一系列资产授权
+   * @param   _approved    被授权者
+   * @param   _tokenId     首个资产编号
+   * @param   _count       资产数量
    */
   function approveMulti(
     address _approved,
@@ -263,10 +288,8 @@ contract NFToken is
     external
   {
     require(_count > 0, "count should more than 0");
-    for (uint256 idx = 0; idx < _count; idx++) {
-      uint256 tid = _tokenId.add(idx);
-      approve(_approved, tid);
-    }
+    uint256[] memory r = _tokenId.convert(_count);
+    approveWithAarry(_approved, r);
   }
 
   /**
@@ -370,7 +393,7 @@ contract NFToken is
 
     emit Transfer(from, _to, _tokenId);
   }
-   
+
   /**
    * @dev Mints a new NFT.
    * @notice This is a private function which should be called from user-implemented external
@@ -414,7 +437,7 @@ contract NFToken is
     emit Transfer(_owner, address(0), _tokenId);
   }
 
-  /** 
+  /**
    * @dev Clears the current approval of a given NFT ID.
    * @param _tokenId ID of the NFT to be transferred.
    */
@@ -435,15 +458,40 @@ contract NFToken is
   function revokeApprove(
     uint256 _tokenId
   )
-    external
+    public
     canTransfer(_tokenId)
-    returns (bool _success)
   {
     if(idToApprovals[_tokenId] != 0)
     {
       delete idToApprovals[_tokenId];
-      _success = true;
     }
+  }
+
+  /**
+   * remove approve with array.
+   */
+  function removeApproveWithArray(
+    uint256[] _array
+  )
+    public
+  {
+    for (uint256 idx = 0; idx < _array.length; idx++) {
+      revokeApprove(_array[idx]);
+    }
+  }
+
+  /**
+   * remote multi approve.
+   */
+  function removeMultiApprove(
+    uint256 _tokenId,
+    uint256 _count
+  )
+    external
+  {
+    require(_count > 0, "count shoud more than 0");
+    uint256[] memory r = _tokenId.convert(_count);
+    removeApproveWithArray(r);
   }
 
   /**

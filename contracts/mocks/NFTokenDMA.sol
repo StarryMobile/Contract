@@ -14,6 +14,7 @@ contract NFTokenDMA is
   NFTokenMetadata,
   Ownable
 {
+  using AssetMap for AssetMap.Data;
   // 资产表
   AssetMap.Data assetMap;
 
@@ -54,13 +55,13 @@ contract NFTokenDMA is
   /**
    * @dev 生成一份资产，内部调用生成多份同类资产方法
    * @param    _tokenId   首个资产编号(作为资产标识)
-   * @param    _uri       资产数据网址    
+   * @param    _uri       资产数据网址
    */
   function mint(
     address _to,
     uint256 _tokenId,
     string _uri
-  ) 
+  )
     external
     onlyOwner
   {
@@ -72,7 +73,7 @@ contract NFTokenDMA is
    * @param    _to        资产所有者
    * @param    _tokenId   首个资产编号(作为资产标识)
    * @param    _count     资产数量
-   * @param    _uri       资产数据网址 
+   * @param    _uri       资产数据网址
    */
   function mintMulti(
     address _to,
@@ -85,11 +86,11 @@ contract NFTokenDMA is
   {
     require(_tokenId > 0, "tokenId should over 0");
     require(_count > 0, "Count number should over 0");
-    uint256 startId = AssetMap.nextTokenId(assetMap, _to, _tokenId);
+    uint256 startId = assetMap.nextTokenId(_to, _tokenId);
     for (uint256 idx = 0; idx < _count; idx++) {
       _mint(_to, startId.add(idx), _uri);
     }
-    AssetMap.update(assetMap, _to, _tokenId, startId.add(_count));
+    assetMap.update(_to, _tokenId, startId.add(_count));
   }
 
   /**
@@ -100,12 +101,12 @@ contract NFTokenDMA is
   function getLatestTokenId(
     address _to,
     uint256 _tokenId
-  ) 
+  )
     external
     view
     returns (uint256 _tid)
   {
-    _tid = AssetMap.getLatestTokenId(assetMap, _to, _tokenId);
+    _tid = assetMap.getLatestTokenId(_to, _tokenId);
   }
 
   /**

@@ -1,6 +1,10 @@
 pragma solidity ^0.4.24;
 
+import "../math/SafeMath.sol";
+
 library AssetMap {
+  using SafeMath for uint256;
+
   struct Data {
     mapping (address => mapping (uint256 => uint256)) assetMapping;
   }
@@ -17,26 +21,24 @@ library AssetMap {
     address _owner,
     uint256 _tokenId,
     uint256 _latestTokenId
-  ) 
-    external
-    returns (bool _ok)
+  )
+    internal
   {
     _self.assetMapping[_owner][_tokenId] = _latestTokenId;
-    _ok = true;
   }
 
   /**
    * @dev 获取某人某种资产的最后一个资产编号
    * @param    _self     资产记录表
    * @param  _owner      资产所有者
-   * @param  _tokenId    资产编号(以此做为资产比较标记)   
+   * @param  _tokenId    资产编号(以此做为资产比较标记)
    */
   function getLatestTokenId(
     Data storage _self,
     address _owner,
     uint256 _tokenId
-  ) 
-    external
+  )
+    internal
     view
     returns (uint256 _tid)
   {
@@ -52,9 +54,9 @@ library AssetMap {
    */
   function nextTokenId(
     Data storage _self,
-    address _to, 
+    address _to,
     uint256 _tokenId
-  ) 
+  )
     internal
     view
     returns (uint256 _tid)
@@ -66,5 +68,4 @@ library AssetMap {
       _tid = _tokenId;
     }
   }
-
 }

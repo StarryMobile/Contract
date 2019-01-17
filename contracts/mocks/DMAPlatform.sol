@@ -3,13 +3,16 @@ pragma solidity ^0.4.24;
 import "./TokenDMA.sol";
 import "./NFTokenDMA.sol";
 import "./AssetMap.sol";
+import "./TokenUtil.sol";
 
 /**
  * @dev This is an example contract implementation of Token.
  */
 contract DMAPlatform {
   using SafeMath for uint256;
-  
+  using AssetMap for AssetMap.Data;
+  using TokenUtil for uint256;
+
   // 上线资产表
   AssetMap.Data  approveMap;
 
@@ -35,8 +38,7 @@ contract DMAPlatform {
   event Transfer(
     address indexed _from,
     address indexed _to,
-    uint256 indexed _tokenId,
-    uint256  _count,
+    uint256[] _array,
     uint256  _value
   );
 
@@ -44,7 +46,7 @@ contract DMAPlatform {
     address  _owner,
     uint256  _cnt
   );
-  
+
   // 所有资产列表
   mapping (address => mapping(uint256 => uint256)) internal allAssets;
   mapping (address => uint256) internal assetCount;
@@ -68,7 +70,7 @@ contract DMAPlatform {
    * @param _tokenId      首个资产编号
    * @param _owner        资产所有者
    * @param _value        资产价值
-   */ 
+   */
   function _saveApprove(
     address _owner,
     uint256 _tokenId,
@@ -78,6 +80,7 @@ contract DMAPlatform {
   {
     require(_owner != address(0), "invalid owner address");
     require(_value > 0, "value could more than 0");
+    require(_tokenId > 0, "tokenId should more than 0");
     address tokenOwner = NFTokenDMA(token721).ownerOf(_tokenId);
     address approver = NFTokenDMA(token721).getApproved(_tokenId);
     require(approver == address(this), "invalid approve address");
@@ -89,43 +92,59 @@ contract DMAPlatform {
   }
 
   /**
+   *  @dev 以数组方式指定上线资产
+   * @param _owner     资产所有者
+   * @param _tokenArr   首个资产编号
+   * @param _value     每份资产价值
+   */
+  function saveApproveWithArray(
+    address     _owner,
+    uint256[]   _tokenArr,
+    uint256     _value
+  )
+    public
+  {
+    for (uint256 idx = 0; idx < _tokenArr.length; idx++) {
+      _saveApprove(_owner, _tokenArr[idx], _value);
+    }
+  }
+
+  /**
    * @dev 保存用户授权信息，支持同类多份资产，资产上线
    * @param _owner     资产所有者
    * @param _tokenId   首个资产编号
    * @param _count     资产数量(至少为1)
-   * @param _value     每份资产价值 
-   */  
+   * @param _value     每份资产价值
+   */
   function saveMultiApprove(
     address _owner,
     uint256 _tokenId,
     uint256 _count,
     uint256 _value
-  ) 
+  )
     public
   {
     require(_count > 0, "count should more than 0");
-    uint256 startId = AssetMap.nextTokenId(approveMap, _owner, _tokenId);
-    for (uint256 idx = 0; idx < _count; idx++) {
-      uint256 tId = startId.add(idx);
-      _saveApprove(_owner, tId, _value);
-    }
-    AssetMap.update(approveMap, _owner, _tokenId, startId.add(_count));
+    uint256 startId = approveMap.nextTokenId(_owner, _tokenId);
+    uint256[] memory r = _tokenId.convert(_count);
+    saveApproveWithArray(_owner, r, _value);
+    approveMap.update(_owner, _tokenId, startId.add(_count));
   }
 
   /**
-   * @dev  保存用户授权信息，资产上线 
+   * @dev  保存用户授权信息，资产上线
    * @param _owner     资产所有者
    * @param _tokenId   首个资产编号
-   * @param _value     每份资产价值    
+   * @param _value     每份资产价值
    */
   function saveApprove(
     address _owner,
     uint256 _tokenId,
     uint256 _value
-  ) 
+  )
     external
   {
-    saveMultiApprove(_owner, _tokenId, 1, _value);   
+    saveMultiApprove(_owner, _tokenId, 1, _value);
   }
 
  /**
@@ -136,21 +155,21 @@ contract DMAPlatform {
   function getLatestTokenId(
     address _to,
     uint256 _tokenId
-  ) 
+  )
     external
     view
     returns (uint256 _tid)
   {
-    _tid = AssetMap.getLatestTokenId(approveMap, _to, _tokenId);
+    _tid = approveMap.getLatestTokenId(_to, _tokenId);
   }
 
   /**
    * @dev 获取用户的授权信息
    * @param _tokenId    资产编号
-   */ 
+   */
   function getApproveinfo(
     uint256 _tokenId
-  ) 
+  )
     external
     view
     returns (address _owner, uint256 _tId, uint256 _value)
@@ -162,53 +181,121 @@ contract DMAPlatform {
 
   /**
    * @dev 删除授权信息
-   * @param _tokenId    首个资产编号
-   * @param _count      资产数量(至少1个)
-   */ 
-  function  revokeApprove(
-    uint256 _tokenId,
-    uint256 _count
-  ) 
-    external 
-    returns (bool _success) 
+   * @param _tokenArr    资产编号数组
+   */
+  function  revokeApprovesWithArray(
+    uint256[] _tokenArr
+  )
+    public
   {
-    require(_count > 0, "count should more than 0");
-    for (uint256 idx = 0; idx < _count; idx++) {
-      uint256 tid = _tokenId.add(idx);
+    for (uint256 idx = 0; idx < _tokenArr.length; idx++) {
+      uint256 tid = _tokenArr[idx];
       address tokenOwner = NFTokenDMA(token721).ownerOf(tid);
       require(allAssets[tokenOwner][tid] > 0, "asset shoud exist");
       require(tokenOwner == msg.sender, "No permission");
-      NFTokenDMA(token721).revokeApprove(tid);      
+      NFTokenDMA(token721).revokeApprove(tid);
+      emit RevokeApprove(tokenOwner, tid, 1);
     }
-    deleteApprove(tokenOwner, _tokenId, _count);
-    emit RevokeApprove(tokenOwner, _tokenId, _count);
-    _success = true;
+    deleteApprove(tokenOwner, _tokenArr);
   }
 
   /**
+   * @dev 删除授权信息
+   * @param _tokenId    首个资产编号
+   * @param _count      资产数量(至少1个)
+   */
+  function  revokeApprove(
+    uint256 _tokenId,
+    uint256 _count
+  )
+    external
+  {
+    require(_count > 0, "count should more than 0");
+    uint256[] memory r = _tokenId.convert(_count);
+    revokeApprovesWithArray(r);
+  }
+
+  function checkTotalValueWithArray(
+    uint256[]  _array,
+    uint256    _totalValue
+  )
+    internal
+    view
+  {
+    uint256 _value = 0;
+    address tokenOwner = NFTokenDMA(token721).ownerOf(_array[0]);
+    for (uint256 idx = 0; idx < _array.length; idx++) {
+      uint256 tid = _array[idx];
+      require(allAssets[tokenOwner][tid] > 0, "asset shoud exist");
+      _value = _value.add(allAssets[tokenOwner][tid]);
+    }
+    require(_totalValue >= _value, "invalid total value");
+  }
+
+
+  /**
    * @dev check total value
-   * @param _tokenId  首个资产编号
-   * @param _count    资产数量(至少1个)
+   * @param _tokenId      首个资产编号
+   * @param _count        资产数量(至少1个)
+   * @param _totalValue   资产总价
    */
 
   function checkTotalValue(
     uint256 _tokenId,
     uint256 _count,
     uint256 _totalValue
-  ) 
+  )
     internal
     view
   {
     require(_count > 0, "count should more than 0");
     require(_totalValue > 0, "total value should more than 0");
-    uint256 _value = 0;
-    address tokenOwner = NFTokenDMA(token721).ownerOf(_tokenId);
-    for (uint256 idx = 0; idx < _count; idx++) {
-      uint256 tid = _tokenId.add(idx);
+    uint256[] memory r = _tokenId.convert(_count);
+    checkTotalValueWithArray(r, _totalValue);
+  }
+
+  /**
+   * @dev  付款
+   * @param   _tokenOwner    资产所有者
+   * @param   _array         资产数组
+   * @param   _value         资产总价
+   */
+  function tranferMoney(
+    address   _tokenOwner,
+    uint256[] _array,
+    uint256   _value
+  )
+    internal
+  {
+    uint256 dmaApprove = TokenDMA(token20).freezeValue(msg.sender, address(this));
+    require(dmaApprove >= _value, "no enough approve");
+    TokenDMA(token20).transferFromFreeze(msg.sender, _tokenOwner, _value);
+    deleteApprove(_tokenOwner, _array);
+    emit Transfer(_tokenOwner, msg.sender, _array, _value);
+  }
+
+  /**
+   * @dev 以指定数组进行交易
+   * @param   _array      等交易资产数组
+   * @param   _value      交易总金额
+   */
+  function transferWithArray(
+    uint256[]   _array,
+    uint256     _value
+  )
+    public
+  {
+    require(_array.length > 0, "array should not be empty");
+    checkTotalValueWithArray(_array, _value);
+    address tokenOwner = NFTokenDMA(token721).ownerOf(_array[0]);
+    for (uint256 idx = 0; idx < _array.length; idx++) {
+      uint256 tid = _array[idx];
       require(allAssets[tokenOwner][tid] > 0, "asset shoud exist");
-      _value = _value.add(allAssets[tokenOwner][tid]);
-    } 
-    require(_totalValue >= _value, "invalid total value");
+      address approver = NFTokenDMA(token721).getApproved(tid);
+      require(approver == address(this), "no permission for 721 approve");
+      NFTokenDMA(token721).safeTransferFrom(tokenOwner, msg.sender, tid);
+    }
+    tranferMoney(tokenOwner, _array, _value);
   }
 
   /**
@@ -216,49 +303,32 @@ contract DMAPlatform {
    * @param _tokenId  首个资产编号
    * @param _count    资产数量(至少1个)
    * @param _value    成交总价格
-   */ 
+   */
   function transfer(
     uint256 _tokenId,
     uint256 _count,
     uint256 _value
   )
     external
-    returns (bool _success) 
   {
     require(_count > 0, "count should more than 0");
-    checkTotalValue(_tokenId, _count, _value);
-    address tokenOwner = NFTokenDMA(token721).ownerOf(_tokenId);
-    for (uint256 idx = 0; idx < _count; idx++) {
-      uint256 tid = _tokenId.add(idx);
-      require(allAssets[tokenOwner][tid] > 0, "asset shoud exist");
-      address approver = NFTokenDMA(token721).getApproved(tid);
-      require(approver == address(this), "no permission for 721 approve");
-      NFTokenDMA(token721).safeTransferFrom(tokenOwner, msg.sender, tid);
-    }  
-    uint256 dmaApprove = TokenDMA(token20).freezeValue(msg.sender, address(this));
-    require(dmaApprove >= _value, "no enough approve");
-    TokenDMA(token20).transferFromFreeze(msg.sender, tokenOwner, _value);
-    deleteApprove(tokenOwner, _tokenId, _count);
-    emit Transfer(tokenOwner, msg.sender, _tokenId, _count, _value);
-    _success = true;
+    uint256[] memory r = _tokenId.convert(_count);
+    transferWithArray(r, _value);
   }
 
   /**
    * @dev delete an approve
    * @param _owner     资产所有者
-   * @param _tokenId   首个资产编号
-   * @param _count     资产数量(至少1个)
+   * @param _array     资产数组
    */
   function deleteApprove(
-    address _owner,
-    uint256 _tokenId,
-    uint256 _count
+    address   _owner,
+    uint256[] _array
   )
-    internal 
+    internal
   {
-    require(_count > 0, "count shoud more than 0");
-    for (uint256 idx = 0; idx < _count; idx++) {
-      uint256 tid = _tokenId.add(idx);
+    for (uint256 idx = 0; idx < _array.length; idx++) {
+      uint256 tid = _array[idx];
       delete allAssets[_owner][tid];
       decAssetCnt(_owner);
     }
@@ -289,7 +359,6 @@ contract DMAPlatform {
     assetCount[_owner] = assetCount[_owner].add(1);
     emit IncCnt(_owner, assetCount[_owner]);
   }
-
 
   /**
    * decrease the count of assets for a user.

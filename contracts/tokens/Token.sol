@@ -1,6 +1,6 @@
 pragma solidity ^0.4.24;
 
-import "./math/SafeMath.sol";
+import "../math/SafeMath.sol";
 import "./ERC20.sol";
 
 /**
@@ -78,7 +78,8 @@ contract Token is
    */
   event RevokeApprove(
     address indexed _owner,
-    address indexed _spender
+    address indexed _spender,
+    uint256 indexed _amount
   );    
 
   /**
@@ -204,21 +205,23 @@ contract Token is
   }
 
   /**
-   * revoke the approve
+   * @dev  解除授权，由被授权者调用
+   * @param  _owner   授权者
+   * @param  _amount  授权额度
    */
   function revokeApprove(
-    address _owner
+    address _owner,
+    uint256 _amount
   )
     external
-    returns (bool _success)
   {
     require(_owner != address(0), "owner address invalid");
+    require(_amount >= 0 && _amount <= freeze[_owner][msg.sender], "invalid amount");
 
-    balances[_owner] = balances[_owner].add(freeze[_owner][msg.sender]);
-    freeze[_owner][msg.sender] = 0;
+    balances[_owner] = balances[_owner].add(_amount);
+    freeze[_owner][msg.sender] = freeze[_owner][msg.sender].sub(_amount);
 
-    emit RevokeApprove(_owner, msg.sender);
-    _success = true;
+    emit RevokeApprove(_owner, msg.sender, _amount);
   }
 
   /**
