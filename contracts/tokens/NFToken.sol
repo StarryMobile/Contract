@@ -19,8 +19,8 @@ contract NFToken is
   using AssetMap for AssetMap.Data;
   using TokenUtil for uint256;
 
-  // mock Map
-  AssetMap.Data mockMap;
+  // approved Map
+  AssetMap.Data approvedMap;
 
   /**
    * @dev A mapping from NFT ID to the address that owns it.
@@ -110,10 +110,16 @@ contract NFToken is
   modifier canTransfer(
     uint256 _tokenId
   ) {
-    require(
-      getApproved(_tokenId) == msg.sender, "Only approved can transfer"
-    );
-
+    address tokenOwner = idToOwner[_tokenId];
+    if (idToApprovals[_tokenId] != 0) {
+      require(getApproved(_tokenId) == msg.sender, "Only approved can transfer");
+    } else {
+      require(
+        tokenOwner == msg.sender
+        || getApproved(_tokenId) == msg.sender
+        || ownerToOperators[tokenOwner][msg.sender]
+      );
+    }
     _;
   }
 
@@ -251,6 +257,7 @@ contract NFToken is
     canOperate(_tokenId)
     validNFToken(_tokenId)
   {
+    require(idToApprovals[_tokenId] == 0, "Asset has approved to another address");
     address tokenOwner = idToOwner[_tokenId];
     require(_approved != tokenOwner);
 
@@ -288,8 +295,10 @@ contract NFToken is
     external
   {
     require(_count > 0, "count should more than 0");
-    uint256[] memory r = _tokenId.convert(_count);
+    uint256 startId = approvedMap.nextTokenId(_approved, _tokenId);
+    uint256[] memory r = startId.convert(_count);
     approveWithAarry(_approved, r);
+    approvedMap.update(_approved, _tokenId, startId.add(_count));
   }
 
   /**

@@ -24,7 +24,11 @@ library AssetMap {
   )
     internal
   {
-    _self.assetMapping[_owner][_tokenId] = _latestTokenId;
+    if (_tokenId == _latestTokenId) {
+      delete _self.assetMapping[_owner][_tokenId];
+    } else {
+      _self.assetMapping[_owner][_tokenId] = _latestTokenId;
+    }
   }
 
   /**

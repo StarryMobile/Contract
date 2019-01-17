@@ -71,7 +71,7 @@ contract Token is
     address indexed _owner,
     address indexed _spender,
     uint256 _value
-  ); 
+  );
 
   /**
    * @dev Trigger on any successful call to revokeApprove(address _spender, uint256 _value).
@@ -80,7 +80,7 @@ contract Token is
     address indexed _owner,
     address indexed _spender,
     uint256 indexed _amount
-  );    
+  );
 
   /**
    * @dev Returns the name of the token.
@@ -225,7 +225,7 @@ contract Token is
   }
 
   /**
-   * get the freeze value 
+   * get the freeze value
    */
   function freezeValue(
     address _owner,

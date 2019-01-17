@@ -22,6 +22,11 @@ contract NFTokenMetadata is
   string internal nftSymbol;
 
   /**
+   * @dev a metadata  url for NFTokens.
+   */
+  string internal metadata;
+
+  /**
    * @dev Mapping from NFT ID to metadata uri.
    */
   mapping (uint256 => string) internal idToUri;
@@ -95,6 +100,17 @@ contract NFTokenMetadata is
     returns (string _symbol)
   {
     _symbol = nftSymbol;
+  }
+
+  /**
+   * @dev Returns metadata for NFTokens.
+   */
+  function metaData()
+    external
+    view
+    returns (string _metaData)
+  {
+    _metaData = metadata;
   }
 
   /**

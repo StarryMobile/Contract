@@ -15,6 +15,8 @@ contract DMAPlatform {
 
   // 上线资产表
   AssetMap.Data  approveMap;
+  // 交易资产表
+  AssetMap.Data  salesMap;
 
   // NFToken合约地址
   address internal token721;
@@ -126,7 +128,7 @@ contract DMAPlatform {
   {
     require(_count > 0, "count should more than 0");
     uint256 startId = approveMap.nextTokenId(_owner, _tokenId);
-    uint256[] memory r = _tokenId.convert(_count);
+    uint256[] memory r = startId.convert(_count);
     saveApproveWithArray(_owner, r, _value);
     approveMap.update(_owner, _tokenId, startId.add(_count));
   }
@@ -161,6 +163,20 @@ contract DMAPlatform {
     returns (uint256 _tid)
   {
     _tid = approveMap.getLatestTokenId(_to, _tokenId);
+  }
+
+  /**
+   * @dev 获得某类资产下次开始交易的编号
+   */
+  function getLatestSalesTokenId(
+    address _to,
+    uint256 _tokenId
+  )
+    external
+    view
+    returns (uint256 _tid)
+  {
+    _tid = salesMap.getLatestTokenId(_to, _tokenId);
   }
 
   /**
@@ -205,17 +221,22 @@ contract DMAPlatform {
    * @param _count      资产数量(至少1个)
    */
   function  revokeApprove(
+    address _owner,
     uint256 _tokenId,
     uint256 _count
   )
     external
   {
     require(_count > 0, "count should more than 0");
-    uint256[] memory r = _tokenId.convert(_count);
+    uint256 lastId = approveMap.nextTokenId(_owner, _tokenId);
+    require(lastId > 0 && lastId.sub(_tokenId) >= _count, "tokenId and count are invalid");
+    uint256[] memory r = lastId.sub(_count).convert(_count);
     revokeApprovesWithArray(r);
+    approveMap.update(_owner, _tokenId, lastId.sub(_count));
   }
 
   function checkTotalValueWithArray(
+    address    _owner,
     uint256[]  _array,
     uint256    _totalValue
   )
@@ -223,11 +244,10 @@ contract DMAPlatform {
     view
   {
     uint256 _value = 0;
-    address tokenOwner = NFTokenDMA(token721).ownerOf(_array[0]);
     for (uint256 idx = 0; idx < _array.length; idx++) {
       uint256 tid = _array[idx];
-      require(allAssets[tokenOwner][tid] > 0, "asset shoud exist");
-      _value = _value.add(allAssets[tokenOwner][tid]);
+      require(allAssets[_owner][tid] > 0, "asset with tid shoud exist");
+      _value = _value.add(allAssets[_owner][tid]);
     }
     require(_totalValue >= _value, "invalid total value");
   }
@@ -241,6 +261,7 @@ contract DMAPlatform {
    */
 
   function checkTotalValue(
+    address _owner,
     uint256 _tokenId,
     uint256 _count,
     uint256 _totalValue
@@ -251,7 +272,7 @@ contract DMAPlatform {
     require(_count > 0, "count should more than 0");
     require(_totalValue > 0, "total value should more than 0");
     uint256[] memory r = _tokenId.convert(_count);
-    checkTotalValueWithArray(r, _totalValue);
+    checkTotalValueWithArray(_owner, r, _totalValue);
   }
 
   /**
@@ -280,16 +301,18 @@ contract DMAPlatform {
    * @param   _value      交易总金额
    */
   function transferWithArray(
+    address     _owner,
     uint256[]   _array,
     uint256     _value
   )
     public
   {
     require(_array.length > 0, "array should not be empty");
-    checkTotalValueWithArray(_array, _value);
-    address tokenOwner = NFTokenDMA(token721).ownerOf(_array[0]);
+    checkTotalValueWithArray(_owner, _array, _value);
     for (uint256 idx = 0; idx < _array.length; idx++) {
       uint256 tid = _array[idx];
+      address tokenOwner = NFTokenDMA(token721).ownerOf(tid);
+      require(tokenOwner == _owner, "assert owner is not matched.");
       require(allAssets[tokenOwner][tid] > 0, "asset shoud exist");
       address approver = NFTokenDMA(token721).getApproved(tid);
       require(approver == address(this), "no permission for 721 approve");
@@ -305,6 +328,7 @@ contract DMAPlatform {
    * @param _value    成交总价格
    */
   function transfer(
+    address _owner,
     uint256 _tokenId,
     uint256 _count,
     uint256 _value
@@ -312,8 +336,10 @@ contract DMAPlatform {
     external
   {
     require(_count > 0, "count should more than 0");
-    uint256[] memory r = _tokenId.convert(_count);
-    transferWithArray(r, _value);
+    uint256 startId = salesMap.nextTokenId(_owner, _tokenId);
+    uint256[] memory r = startId.convert(_count);
+    transferWithArray(_owner, r, _value);
+    salesMap.update(_owner, _tokenId, startId.add(_count));
   }
 
   /**

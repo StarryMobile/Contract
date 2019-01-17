@@ -19,18 +19,31 @@ contract NFTokenDMA is
   AssetMap.Data assetMap;
 
   /**
+   * @dev token status map
+   */
+  mapping (address => mapping (uint256 => uint256)) statusMap;
+
+  /**
+   * @dev token user map
+   */
+  mapping (address => mapping (uint256 => string))  userMap;
+
+  /**
    * @dev Contract constructor.
    * @param _name A descriptive name for a collection of NFTs.
    * @param _symbol An abbreviated name for NFTokens.
+   * @param _metadata A metadata url for NFTokens.
    */
   constructor(
     string _name,
-    string _symbol
+    string _symbol,
+    string _metadata
   )
     public
   {
     nftName = _name;
     nftSymbol = _symbol;
+    metadata = _metadata;
   }
 
   /**
@@ -124,4 +137,68 @@ contract NFTokenDMA is
     super._burn(_owner, _tokenId);
   }
 
+  function checkUri(
+     uint256 _tokenId
+  )
+     external
+     view
+     returns (string)
+  {
+     return idToUri[_tokenId];
+  }
+
+  /**
+   * @dev set token staus
+   */
+  function setStatus(
+    address _owner,
+    uint256 _tokenId,
+    uint256 _status
+  )
+    external
+  {
+    statusMap[_owner][_tokenId] = _status;
+  }
+
+  /**
+   * @dev set token user
+   */
+  function setUser(
+    address _owner,
+    uint256 _tokenId,
+    string  _user
+  )
+    external
+  {
+    userMap[_owner][_tokenId] = _user;
+  }
+
+
+  /**
+   * @dev get token staus
+   */
+  function getStatus(
+    address _owner,
+    uint256 _tokenId
+  )
+    external
+    view
+    returns (uint256 _status)
+  {
+    _status = statusMap[_owner][_tokenId];
+  }
+
+  /**
+   * @dev get token user
+   */
+  function getUser(
+    address _owner,
+    uint256 _tokenId
+  )
+    external
+    view
+    returns (string _user)
+  {
+    _user = userMap[_owner][_tokenId];
+  }
 }
