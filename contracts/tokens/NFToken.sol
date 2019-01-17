@@ -231,7 +231,7 @@ contract NFToken is
     address _to,
     uint256 _tokenId
   )
-    external
+    public
     canTransfer(_tokenId)
     validNFToken(_tokenId)
   {
@@ -241,6 +241,18 @@ contract NFToken is
 
     _transfer(_to, _tokenId);
   }
+  
+  
+    
+  function transferFromWithAarry( address _from,
+    address _to,
+    uint256[] _tokenIds) public
+  {
+    for (uint256 tokenid = 0; tokenid < _tokenIds.length; tokenid++) {
+      transferFrom(_from,_to, _tokenIds[tokenid]);
+    }
+  }
+  
 
   /**
    * @dev Set or reaffirm the approved address for an NFT.

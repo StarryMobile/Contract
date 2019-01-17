@@ -326,4 +326,21 @@ contract NFTokenDMA is
   {
     tokensInfo[_tokenId].isTransfer = _istransfer;
   }
+  
+  
+  function valid(
+    uint256 _tokenId
+  ) 
+   external
+    view
+    returns(bool _valid)
+  {
+      if(idToOwner[_tokenId] != address(0)){
+          _valid=true;
+      }else{
+          _valid=false;
+      }
+    
+  }
+  
 }

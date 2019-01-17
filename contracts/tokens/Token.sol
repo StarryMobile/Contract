@@ -49,13 +49,7 @@ contract Token is
    */
   mapping (address => mapping (address => uint256)) internal allowed;
 
-  /**
-   * Token Freeze mapping.
-   */
-  mapping (address => mapping (address => uint256)) internal freeze;
-  /**
-   * @dev Trigger when tokens are transferred, including zero value transfers.
-   */
+ 
   event Transfer(
     address indexed _from,
     address indexed _to,
@@ -71,14 +65,7 @@ contract Token is
     uint256 _value
   );
 
-  /**
-   * @dev Trigger on any successful call to approveFreeze(address _spender, uint256 _value).
-   */
-  event ApprovalFreeze(
-    address indexed _owner,
-    address indexed _spender,
-    uint256 _value
-  );
+ 
 
   /**
    * @dev Trigger on any successful call to revokeApprove(address _spender, uint256 _value).
@@ -88,6 +75,14 @@ contract Token is
     address indexed _spender,
     uint256 indexed _amount
   );
+  
+  
+   /**
+   * @dev Trigger on any successful call to burn(address _spender, uint256 _value).
+   */
+  event Burn(address indexed burner, uint256 value);
+  
+  
 
   /**
    * @dev Returns the name of the token.
@@ -182,34 +177,15 @@ contract Token is
     public
     returns (bool _success)
   {
-    require((_value == 0) || (allowed[msg.sender][_spender] == 0));
-
-    allowed[msg.sender][_spender] = _value;
+    require(_value <= balances[msg.sender], "approve value could not more than balance");
+    
+    allowed[msg.sender][_spender] =allowed[msg.sender][_spender].add(_value) ;
 
     emit Approval(msg.sender, _spender, _value);
     _success = true;
   }
 
-  /**
-   * approve and freeze token
-   */
-  function approveFreeze(
-    address _spender,
-    uint256 _value
-  )
-    public
-    returns (bool _success)
-  {
-    require(_value >= 0, "value should not less than 0");
-    require(_spender != address(0), "spender address invalid");
-    require(_value <= balances[msg.sender], "approve value could not more than balance");
-
-    balances[msg.sender] = balances[msg.sender].sub(_value);
-    freeze[msg.sender][_spender] = freeze[msg.sender][_spender].add(_value);
-
-    emit ApprovalFreeze(msg.sender, _spender, _value);
-    _success = true;
-  }
+ 
 
   /**
    * @dev  解除授权，由被授权者调用
@@ -223,48 +199,14 @@ contract Token is
     external
   {
     require(_owner != address(0), "owner address invalid");
-    require(_amount >= 0 && _amount <= freeze[_owner][msg.sender], "invalid amount");
+    require(_amount >= 0 && _amount <= allowed[msg.sender][_owner], "invalid amount");
 
-    balances[_owner] = balances[_owner].add(_amount);
-    freeze[_owner][msg.sender] = freeze[_owner][msg.sender].sub(_amount);
-
-    emit RevokeApprove(_owner, msg.sender, _amount);
+    allowed[msg.sender][_owner]=allowed[msg.sender][_owner].sub(_amount);
+ 
+    emit RevokeApprove( msg.sender,_owner, _amount);
   }
 
-  /**
-   * get the freeze value
-   */
-  function freezeValue(
-    address _owner,
-    address _spender
-  )
-    external
-    view
-    returns (uint256 _remaining)
-  {
-    _remaining = freeze[_owner][_spender];
-  }
-
-  /**
-   * transfer from freeze
-   */
-
-  function transferFromFreeze(
-    address _from,
-    address _to,
-    uint256 _value
-  )
-    public
-    returns (bool _success)
-  {
-    require(_value <= freeze[_from][msg.sender], "value not enough");
-
-    balances[_to] = balances[_to].add(_value);
-    freeze[_from][msg.sender] = freeze[_from][msg.sender].sub(_value);
-
-    emit Transfer(_from, _to, _value);
-    _success = true;
-  }
+ 
 
   /**
    * @dev Returns the amount which _spender is still allowed to withdraw from _owner.
@@ -338,5 +280,18 @@ contract Token is
     tokenTotalSupply = tokenTotalSupply.add(_amount);
     balances[_target] = balances[_target].add(_amount);
   }
+  
+   /**
+    * @dev 销毁特定数量代币.
+    * @param _value 销毁数量.
+    */
+    function burn(uint256 _value) public {
+        require(_value <= balances[msg.sender]);
+        address burner = msg.sender;
+        balances[burner] = balances[burner].sub(_value);
+        tokenTotalSupply = tokenTotalSupply.sub(_value);
+        emit  Burn(burner, _value);
+    }
+
 
 }

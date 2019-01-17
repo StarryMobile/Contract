@@ -2,8 +2,8 @@ pragma solidity ^0.4.24;
 
 import "./TokenDMA.sol";
 import "./NFTokenDMA.sol";
-import "@0xcert/ethereum-utils/contracts/ownership/Ownable.sol";
-import "@0xcert/ethereum-utils/contracts/math/SafeMath.sol";
+import "./ownership/Ownable.sol";
+import "./math/SafeMath.sol";
 
 contract PreSale is
   Ownable
@@ -52,10 +52,12 @@ contract PreSale is
    * struct of order info
    * amount          购买数量
    * receiveAddress  接收地址
+   * value 金额
    */
   struct OrderInfo {
     uint256 amount;
     address receiveAddress;
+	uint256 value;
   }
 
   mapping (address => mapping (uint256 => OrderInfo)) internal orders;
@@ -160,13 +162,17 @@ contract PreSale is
   )
     external
     canOrder(_tokenId, _amount)
-  {
+ {
     require(_tokenId > 0 && _amount > 0 && _receiveAddress != address(0), "invalie order parameters");
     require(registedAssets[_tokenId].amount > 0, "assert not registered");
     require(orders[msg.sender][_tokenId].amount == 0, "can't support multi order");
-    uint256 fzValue = TokenDMA(token20).freezeValue(msg.sender, address(this));
-    require(fzValue >= _amount.mul(registedAssets[_tokenId].value), "freeze value is not enough");
-    orders[msg.sender][_tokenId] = OrderInfo(_amount, _receiveAddress);
+    uint256 approveValue = TokenDMA(token20).allowance(msg.sender, address(this));
+    uint256 totalValue=_amount.mul(registedAssets[_tokenId].value);
+  
+    require(approveValue >= totalValue, "freeze value is not enough");
+    TokenDMA(token20).transferFrom(msg.sender,address(this),totalValue);
+  
+    orders[msg.sender][_tokenId] = OrderInfo(_amount, _receiveAddress,totalValue);
     orderAddrs[_tokenId].push(msg.sender);
     presaleStat[_tokenId] = presaleStat[_tokenId].add(_amount);
   }
@@ -184,6 +190,10 @@ contract PreSale is
     notFinished
   {
     require(_tokenId > 0 && _amount > 0, "invalid refund parameters");
+	
+	uint256 refundValue=_amount.mul(registedAssets[_tokenId].value);
+    orders[msg.sender][_tokenId].value=orders[msg.sender][_tokenId].value.sub(refundValue);
+    TokenDMA(token20).transfer(msg.sender,refundValue);
     subOrDelOrderInfo(msg.sender, _tokenId, _amount);
     presaleStat[_tokenId] = presaleStat[_tokenId].sub(_amount);
   }
@@ -253,6 +263,7 @@ contract PreSale is
     _tId = _tokenId;
     _amount  = orders[_payAddress][_tokenId].amount;
     _receiveAddress =  orders[_payAddress][_tokenId].receiveAddress;
+	_value=orders[_payAddress][_tokenId].value;
   }
 
   /**

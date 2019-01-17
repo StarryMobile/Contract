@@ -286,9 +286,9 @@ contract DMAPlatform {
   )
     internal
   {
-    uint256 dmaApprove = TokenDMA(token20).freezeValue(msg.sender, address(this));
+    uint256 dmaApprove = TokenDMA(token20).allowance(msg.sender, address(this));
     require(dmaApprove >= _value, "no enough approve");
-    TokenDMA(token20).transferFromFreeze(msg.sender, _tokenOwner, _value);
+    TokenDMA(token20).transferFrom(msg.sender, _tokenOwner, _value);
     deleteApprove(_tokenOwner, _array);
     emit Transfer(_tokenOwner, msg.sender, _array, _value);
   }
