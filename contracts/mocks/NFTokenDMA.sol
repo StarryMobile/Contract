@@ -98,7 +98,7 @@ contract NFTokenDMA is
   )
     external
   {
-    mintMulti(_to, _tokenId, 1, _uri, _isTransfer, _isBurn);
+    _mint(_to, _tokenId,  _uri, _isTransfer, _isBurn);
   }
 
   /**
@@ -126,7 +126,32 @@ contract NFTokenDMA is
     }
     assetMap.update(_tokenId, startId.add(_count));
   }
+  
+  
+   /**
+   * @dev 生成多份同类资产
+   * @param    _to        资产所有者
+   * @param    _array   资产数组
+   * @param    _uri       资产数据网址
+   */
+  function mintWithArray(
+    address _to,
+    uint256[] _array,
+    string _uri,
+    bool   _isTransfer,
+    bool   _isBurn
+  )
+    public
+  {
 
+    for (uint256 idx = 0; idx < _array.length; idx++) {
+         uint256 tid = _array[idx];
+         require(tid > 0, "tokenId should over 0");
+         _mint(_to, tid, _uri, _isTransfer, _isBurn);
+    }
+   
+  }
+  
   /**
    * @dev 获取资产的最后一个编号
    * @param    _tokenId   首个资产编号(作为资产标识)
