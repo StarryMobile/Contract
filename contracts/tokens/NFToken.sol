@@ -269,10 +269,10 @@ contract NFToken is
     canOperate(_tokenId)
     validNFToken(_tokenId)
   {
-    require(idToApprovals[_tokenId] == 0, "Asset has approved to another address");
     address tokenOwner = idToOwner[_tokenId];
     require(_approved != tokenOwner);
-
+    require(idToApprovals[_tokenId] == 0 || idToApprovals[_tokenId]==_approved, "Asset has approved to another address");
+    
     idToApprovals[_tokenId] = _approved;
     emit Approval(tokenOwner, _approved, _tokenId);
   }

@@ -46,7 +46,7 @@ contract Nlucky is
   /**
    * store address and bet time
    */
-  mapping (address => uint256) internal  betMap;
+
 
   /**
    *  end time
@@ -159,11 +159,12 @@ contract Nlucky is
     external
     canBet
   {
-    uint256 freezeVal = TokenDMA(token20).freezeValue(msg.sender, address(this));
-    uint256 cnt = betMap[msg.sender];
-    require(freezeVal >= price.mul(cnt.add(1)), "freeze value of new adderss isn't enough");
+    uint256 approveVal = TokenDMA(token20).allowance(msg.sender, address(this));
+    require(approveVal >= price, "freeze value of new adderss isn't enough");
+    TokenDMA(token20).transferFrom(msg.sender,address(this),price);
+  
     participants.push(msg.sender);
-    betMap[msg.sender] = betMap[msg.sender].add(1);
+  
     // 触发成功条件
     if(participants.length >= totalPortions){
       isEnoughPartions = true;
@@ -198,17 +199,7 @@ contract Nlucky is
     }
   }
 
-  /**
-   * execute transfer action
-   */
-  function execTransfer(
-    address _payAddress,
-    uint256    _amount
-  )
-    internal
-  {
-    TokenDMA(token20).transferFromFreeze(_payAddress, tokenOwner, _amount);
-  }
+ 
 
   /**
    * @dev refund
@@ -219,10 +210,9 @@ contract Nlucky is
   )
     internal
   {
-    uint freezeVal = TokenDMA(token20).freezeValue(_refundAddress, address(this));
-    if(freezeVal > 0){
-      TokenDMA(token20).revokeApprove(_refundAddress, freezeVal);
-    }
+      
+      TokenDMA(token20).transferFrom(address(this),_refundAddress,price);
+  
   }
 
   /**
@@ -239,6 +229,9 @@ contract Nlucky is
       address approvedAddr = NFTokenDMA(token721).getApproved(tokenId);
       require(approvedAddr == address(this), "invalid approve address");
       NFTokenDMA(token721).safeTransferFrom(tokenOwner, luckyAddress, tokenId);
+      
+      TokenDMA(token20).transferFrom(address(this), tokenOwner, price.mul(len));
+      
       isTransfered = true;
   }
 
@@ -265,7 +258,7 @@ contract Nlucky is
     }
 
     for (uint k = 0; k < addrs.length; k++) {
-      execTransfer(addrs[k], price);
+ 
       deleteFromParticipants(addrs[k]);
     }
   }
@@ -310,14 +303,6 @@ contract Nlucky is
   }
 
 
-  /**
-   * @dev revoke token approve
-   */
-  function revokeToken()
-    external
-  {
-    require(isFinished == true, "activity isn't game over");
-    refund(msg.sender);
-  }
+ 
 
 }

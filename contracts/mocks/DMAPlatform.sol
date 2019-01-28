@@ -198,7 +198,7 @@ contract DMAPlatform {
 
  
 
-  /**
+    /**
    * @dev 以指定数组进行交易
    * @param   _array      等交易资产数组
    * @param   _value      交易总金额
@@ -243,13 +243,14 @@ contract DMAPlatform {
     uint256 _secondExpensesValue=0;
     
     if(_firstValue>0){
-        _firstExpensesValue=_firstValue.mul(firstExpenses);
-        _firstExpensesValue=_firstExpensesValue.div(1000);
+        _firstExpensesValue=_firstValue.div(1000);
+        _firstExpensesValue=_firstExpensesValue.mul(firstExpenses);
     }
     
     if(_secondValue>0){
-        _secondExpensesValue=_secondValue.mul(secondExpenses);
-        _secondExpensesValue=_secondExpensesValue.div(1000);
+        _secondExpensesValue=_secondValue.div(1000);
+        _secondExpensesValue=_secondExpensesValue.mul(secondExpenses);
+      
     }
     
     uint256 dmaApprove = TokenDMA(token20).allowance(msg.sender, address(this));
@@ -265,8 +266,17 @@ contract DMAPlatform {
   
     uint256 _sendValue=_totalValues.sub(_platformValue);
     
-    TokenDMA(token20).transferFrom(msg.sender, platformAddress, _platformValue);
-    TokenDMA(token20).transferFrom(msg.sender, tokenOwner, _sendValue);
+    //用户付款给平台 
+    TokenDMA(token20).transferFrom(msg.sender, address(this), _totalValues);
+    
+    if(_platformValue>0){
+        
+    TokenDMA(token20).transfer(platformAddress,_platformValue);
+    }
+    
+    TokenDMA(token20).transfer(tokenOwner,_sendValue);
+    
+ 
    
     deleteApproveWithArray(_owner, _array);
     
